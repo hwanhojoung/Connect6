@@ -1,0 +1,13 @@
+("Move",2,9,9) # Black at J10 (9,9)
+("Move",1,8,10) # White at I11 (8,10)
+("Move",1,8,11) # White at I12 (8,11)
+("Move",2,8,9) # Black at I10 (8,9)
+("Move",2,7,9) # Black at H10 (7,9)
+("Move",1,11,7) # White at L8 (11,7)
+("Move",1,9,5) # White at J6 (9,5)
+("Move",2,10,9) # Black at K10 (10,9)
+("Move",2,11,9) # Black at L10 (11,9)
+("Move",1,8,5) # White at I6 (8,5)
+("Move",1,7,12) # White at H13 (7,12)
+("Move",2,6,9) # Black at G10 (6,9)
+("Res", 2) # Black won

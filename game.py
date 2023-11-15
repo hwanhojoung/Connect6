@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+import os
+from common import Point
+from logger import MoveLogger
+from rules import Referee
+from bot import Bot
+from config import AIBot
+
+# constants
+STONE_CHAR = ['.', 'O', 'X', '#']
+STONE_NAME = ['', 'White (O)', 'Black (X)']
+CHAR_TO_X = {chr(ord('A') + i) : i for i in range(19)}
+X_TO_CHAR = {i: chr(ord('A')+i) for i in range(19)}
+prohibited_points = set()
+board = [[0 for x in range(19)] for y in range(19)]
+# console helper methods
+def cls():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def darktext(str):
+    return str if os.name == 'nt' else '\x1b[0;30m{}\x1b[0m'.format(str)
+
+
+def draw_board(board, player=0, nth_move=0):
+    cls()
+    print('Move : {}'.format(nth_move))
+    print('{} turn.'.format(STONE_NAME[player]))
+    print()
+    print('       A B C D E F G H I J K L M N O P Q R S ')
+    print('     +---------------------------------------+')
+
+    for y in range(19):
+        print('  {:>2d} |'.format(y + 1), end='')  # line no.
+        for x in range(19):
+            stone = board[y][x]
+            if stone != 0:
+                print(' ' + STONE_CHAR[board[y][x]], end='')
+            else:
+                point = (x, y)
+                if point in prohibited_points:
+                    print(darktext(' #'), end='')  # Display prohibited point as 'x'
+                else:
+                    print(darktext(' '+X_TO_CHAR[x].lower()), end='')
+        print(' |')
+
+    print('     +---------------------------------------+')
+    print()
+
+
+class Player(Bot):
+    """ 플레이어도 봇으로 취급하지만, 사용자로부터 입력을 받음. """
+
+    def move(self, board, nth_move):
+        while True:
+            try:
+                move = input('{} turn : '.format(STONE_NAME[self.player]))
+                point = Point.from_name(move)
+                
+                if point in prohibited_points:
+                    print('You cannot place a stone in a prohibited point.')
+                    continue
+                
+                x, y = point
+                if board[y][x] != 0:
+                    print('That spot is already occupied. Please choose another spot.')
+                    continue
+
+                return point
+
+            except Exception as e:
+                print('Wrong input. Please enter a valid move.')
+                continue
+
+
+
+def exit_game(logger: MoveLogger, won_bot=None):
+    if won_bot is not None:
+        logger.log_winner(won_bot.player)
+        print('{} ({}) won!!'.format(STONE_NAME[won_bot.player], won_bot.bot_kind))
+    else:
+        print('No one won.')
+
+    logger.save_to_file()
+
+
+def main(bots):
+    # to align index with player variable.
+    bot_set = [None] + bots
+
+    global board;
+    
+    referee = Referee(board)
+
+    nth_move = 1
+    player = 2  # 1=white 2=black. black moves first
+    player_moved_count = 1  # at first time, black can only move once.
+    logger = MoveLogger()
+
+    while True:
+        draw_board(board, player, nth_move)
+        
+        # input loop.
+        while True:
+            try:
+                x, y = bot_set[player].move(board, nth_move)
+                able_to_place, msg = referee.can_place(x, y)
+                if not able_to_place:
+                    print('{}. Try again in another place.'.format(msg))
+                    continue
+                break
+
+            except KeyboardInterrupt:
+                print('\n' + 'Bye...')
+                exit_game(logger)
+                return
+
+            except Exception as e:
+                raise e
+                print('Wrong input.')
+                continue
+
+        # place stone
+        board[y][x] = player
+        logger.log(x, y, player)
+        referee.update(x, y, player)
+
+        won_player = referee.determine()
+        if won_player is not None:
+            exit_game(logger, bot_set[won_player])
+            return
+
+        player_moved_count += 1
+        if player_moved_count == 2:
+            # Change turn : a player can move 2 times per turn.
+            nth_move += 1
+            player_moved_count = 0
+            player = 2 if player == 1 else 1
+
+
+if __name__ == '__main__':
+    print('Welcome to TherneConnect6.')
+    print('Choose player slot. (1=Player 2=AI)')
+
+    black_choice = input(' Black (1 or 2) : ')
+    white_choice = input(' White (1 or 2) : ')
+
+    whitebot = Player(1) if white_choice == '1' else AIBot(1)
+    blackbot = Player(2) if black_choice == '1' else AIBot(2)
+
+    # Set the number of prohibited points
+    num_prohibited_points = int(input('Enter the number of prohibited points (0-4): '))
+
+    # Set prohibited points
+    # Set prohibited points
+    for i in range(num_prohibited_points):
+        prohibited_point = input('Enter prohibited point {}: '.format(i+1))
+        x, y = Point.from_name(prohibited_point)
+        board[y][x] = 3  # Set the prohibited point on the board as 3
+
+
+    print('Welcome to TherneConnect6.')
+    print('Choose player slot. (1=Player 2=AI)')
+
+    main([whitebot, blackbot])
